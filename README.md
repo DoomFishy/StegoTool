@@ -1,0 +1,2 @@
+# StegoTool
+Fun summer project
