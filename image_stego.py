@@ -2,51 +2,122 @@ import os, sys
 from PIL import Image, ImageFilter
 
 cover_img = Image.open("cover_map.jpg")
-stego_img = Image.open("stego_map.jpg")
+secret_img = Image.open("stego_map.jpg")
+stego_img = cover_img.copy()
 
 print(f"Cover Image: {cover_img.format}, {cover_img.size}, {cover_img.mode}")
-
-rgb = cover_img.getpixel((0,0))
-
-r, g, b = rgb
-
-binary_r = format(r, "08b")
-binary_g = format(g, "08b")
-binary_b = format(b, "08b")
-
-print(f"Binary: R:{binary_r}, G{binary_g}, B:{binary_b}")
+print(f"Secret Image: {secret_img.format}, {secret_img.size}, {secret_img.mode}")
 
 
-# Assume Image is same size or smaller
-def stego(cover, stego, bits):
-    # Cartersian Plane (0,0) is top left
-    cover_width, cover_height = cover.size
-    stego_width, stego_height = stego.size
 
-    # Printer style :)
-    for i in range(cover_height):
-        for j in range(cover_width):
-            cover_pixel = cover.getpixel((i, j))
-            
-            cover_rgb = getBinaryRGB(cover_pixel)
+#print(f"Binary: R:{binary_r}, G{binary_g}, B:{binary_b}")
 
-            if i < stego_height and j < stego_width: # only modifying pixels that the stego image covers
-                stego_pixel = stego.getpixel((i, j))
-                stego_rgb = getBinaryRGB(stego_pixel)
 
-                #need to get amount of LSB bits from stego to cover 
+#a = 0b11110000
+#b = 0b00001111
 
-            return 0
+#change = (a >> 2) | (b << 2)
+#getPosition = (b >> 4) & 1
+#setBit1 = b | (1 << 4)
+#setBit0 = b & ~(1 << 4)
+#print(f"{setBit0:08b}")
+
 
 def getBinaryRGB(pixel):
-    r, g, b = rgb
+    r, g, b = pixel
 
     binary_r = format(r, "08b")
     binary_g = format(g, "08b")
     binary_b = format(b, "08b")
 
     return binary_r, binary_g, binary_b
+
+# 0 is far right and end is far left
+# Read right to left
+def setBits(cover, secret, start : int, end : int):
+    for i in range(start, end):
+        bit_cover = (cover >> i) & 1
+        bit_secret = (secret >> i) & 1
+
+        if (bit_secret == 1):
+            cover = cover | (1 << i) # change to 1
+        else:
+            cover = cover & ~(1 << i) # change to 0
+
+    return cover
+
+# Assume Image is same size or smaller
+def stego(cover, secret, bits):
+    # Cartersian Plane (0,0) is top left
+    cover_width, cover_height = cover.size
+    secret_width, secret_height = secret.size
+
+    # Printer style :)
+    for i in range(cover_height):
+        for j in range(cover_width):
+            cover_rgb = cover.getpixel((j, i))
+            
+            if i <= secret_height and j <= secret_width: # only modifying pixels that the stego image covers
+                secret_rgb = secret.getpixel((j, i))
+
+                #need to get amount of LSB bits from stego to cover
+                secret_r, secret_g, secret_b = secret_rgb
+                cover_r, cover_g, cover_b = cover_rgb
+
+
+                cover_r = setBits(cover_r, secret_r, 0, bits)
+                cover_g = setBits(cover_g, secret_g, 0, bits)
+                cover_b = setBits(cover_b, secret_b, 0, bits)
+
+                new_rgb = cover_r, cover_g, cover_b
+
+                stego_img.putpixel((j,i), new_rgb)
+
+            else:
+                return 0
+            
+def getBits(pixel, start, end):
+
+    bit = (pixel >> start) & ((1 << (end - start + 1)) - 1)
     
-stego(cover_img, stego_img, 1)
+    print(f"{bit:08b}")
 
 
+    return bit
+
+def extract(stego, bits):
+    stego_width, stego_height = stego.size
+    extract_img = Image.new("RGB", (stego_width, stego_height), 0)
+
+    for i in range(stego_height):
+        for j in range(stego_width):
+            pixel = stego.getpixel((j,i))
+
+            r, g, b = pixel
+
+            stego_r = getBits(r, 0, bits)
+            stego_g = getBits(g, 0, bits)
+            stego_b = getBits(b, 0, bits)
+
+            rgb = stego_r, stego_g, stego_b
+            
+            extract_img.putpixel((j,i), rgb)
+    return extract_img
+
+''' 
+print("Embedding Image...")
+stego(cover_img, secret_img, 6)
+stego_img.save("stego_image.jpg")
+print("Embedding Image Done!")
+''' 
+
+stego_img = Image.open("stego_image.jpg")
+
+print("Extracting Image...")
+extract_img = extract(stego_img, 6)
+extract_img.save("secret_image.jpg")
+print("Extracting Image Done!")
+
+#print(f"setting: {b:08b} to {a:08b}")
+#test = setBits(a, b, 0, 1)
+#print(f"{test:08b}")
