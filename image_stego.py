@@ -1,8 +1,8 @@
 import os, sys
 from PIL import Image, ImageFilter
 
-cover_img = Image.open("cover_map.jpg")
-secret_img = Image.open("stego_map.jpg")
+cover_img = Image.open("Images/img_2.png")
+secret_img = Image.open("Images/img_1.png")
 stego_img = cover_img.copy()
 
 print(f"Cover Image: {cover_img.format}, {cover_img.size}, {cover_img.mode}")
@@ -10,11 +10,11 @@ print(f"Secret Image: {secret_img.format}, {secret_img.size}, {secret_img.mode}"
 
 
 
-#print(f"Binary: R:{binary_r}, G{binary_g}, B:{binary_b}")
-
-
-#a = 0b11110000
-#b = 0b00001111
+# TO DO
+# - Check for RGB or RGBA
+# - Double check some stuff
+# - Make interactive terminal
+# - Do the app stuff later
 
 #change = (a >> 2) | (b << 2)
 #getPosition = (b >> 4) & 1
@@ -57,36 +57,33 @@ def stego(cover, secret, bits):
         for j in range(cover_width):
             cover_rgb = cover.getpixel((j, i))
             
-            if i <= secret_height and j <= secret_width: # only modifying pixels that the stego image covers
-                secret_rgb = secret.getpixel((j, i))
+            if i < secret_height: # only modifying pixels that the stego image covers
+                if j < secret_width:
+                    secret_rgb = secret.getpixel((j, i))
 
-                #need to get amount of LSB bits from stego to cover
-                secret_r, secret_g, secret_b = secret_rgb
-                cover_r, cover_g, cover_b = cover_rgb
+                    #need to get amount of LSB bits from stego to cover
+                    secret_r, secret_g, secret_b = secret_rgb
+                    cover_r, cover_g, cover_b = cover_rgb
 
 
-                cover_r = setBits(cover_r, secret_r, 0, bits)
-                cover_g = setBits(cover_g, secret_g, 0, bits)
-                cover_b = setBits(cover_b, secret_b, 0, bits)
+                    cover_r = setBits(cover_r, secret_r, 0, bits)
+                    cover_g = setBits(cover_g, secret_g, 0, bits)
+                    cover_b = setBits(cover_b, secret_b, 0, bits)
 
-                new_rgb = cover_r, cover_g, cover_b
+                    new_rgb = cover_r, cover_g, cover_b
 
-                stego_img.putpixel((j,i), new_rgb)
+                    stego_img.putpixel((j,i), new_rgb)
 
             else:
                 return 0
             
 def getBits(pixel, start, end):
+    mask = (1 << end) - 1
 
-    bit = (pixel >> start) & ((1 << (end - start + 1)) - 1)
-    
-    print(f"{bit:08b}")
-
-
-    return bit
+    return (pixel & mask)
 
 def extract(stego, bits):
-    stego_width, stego_height = stego.size
+    stego_width, stego_height = cover_img.size
     extract_img = Image.new("RGB", (stego_width, stego_height), 0)
 
     for i in range(stego_height):
@@ -95,27 +92,27 @@ def extract(stego, bits):
 
             r, g, b = pixel
 
-            stego_r = getBits(r, 0, bits)
-            stego_g = getBits(g, 0, bits)
-            stego_b = getBits(b, 0, bits)
+            stego_r = getBits(r, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+            stego_g = getBits(g, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+            stego_b = getBits(b, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+
 
             rgb = stego_r, stego_g, stego_b
             
             extract_img.putpixel((j,i), rgb)
+
     return extract_img
 
-''' 
 print("Embedding Image...")
-stego(cover_img, secret_img, 6)
-stego_img.save("stego_image.jpg")
+stego(cover_img, secret_img, 7)
+stego_img.save("stego_image.png")
 print("Embedding Image Done!")
-''' 
 
-stego_img = Image.open("stego_image.jpg")
+stego_img = Image.open("stego_image.png")
 
 print("Extracting Image...")
-extract_img = extract(stego_img, 6)
-extract_img.save("secret_image.jpg")
+extract_img = extract(stego_img, 7)
+extract_img.save("secret_image.png")
 print("Extracting Image Done!")
 
 #print(f"setting: {b:08b} to {a:08b}")
