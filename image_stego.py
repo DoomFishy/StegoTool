@@ -4,8 +4,9 @@ import time
 from PIL import Image, ImageFilter
 from rich.progress import Progress, track
 
-cover_img = Image.open("Images/cover_map.png")
-secret_img = Image.open("Images/BNW.png")
+cover_img = Image.open(sys.argv[1])
+secret_img = Image.open(sys.argv[2])    
+
 stego_img = cover_img.copy()
 
 print(f"Cover Image: {cover_img.format}, {cover_img.size}, {cover_img.mode}")
