@@ -22,7 +22,7 @@ secret_img = secret_img.convert("RGB")
 # - Optimize it
 # - MAYBE TERMINAL STUFF
 # - Do error checking (too big secret image, etc)
-# - Do the app stuff later
+# - spread bits hidden
 
 #change = (a >> 2) | (b << 2)
 #getPosition = (b >> 4) & 1
