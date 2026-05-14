@@ -1,5 +1,17 @@
-import os, sys
-import time
+# TO DO
+# - Check for RGB or RGBA
+# - Optimize it
+# - MAYBE TERMINAL STUFF
+# - Do error checking (too big secret image, etc)
+# - spread bits hidden
+
+#change = (a >> 2) | (b << 2)
+#getPosition = (b >> 4) & 1
+#setBit1 = b | (1 << 4)
+#setBit0 = b & ~(1 << 4)
+#print(f"{setBit0:08b}")
+
+import os, sys, time, random
 
 from PIL import Image, ImageFilter
 from rich.progress import Progress, track
@@ -15,20 +27,15 @@ print(f"Secret Image: {secret_img.format}, {secret_img.size}, {secret_img.mode}"
 cover_img = cover_img.convert("RGB")
 secret_img = secret_img.convert("RGB")
 
+password = None
 
 
-# TO DO
-# - Check for RGB or RGBA
-# - Optimize it
-# - MAYBE TERMINAL STUFF
-# - Do error checking (too big secret image, etc)
-# - spread bits hidden
+# create random spacing on random.randint(a,b)
+# create random bit weight on RGB instead of even weighted
 
-#change = (a >> 2) | (b << 2)
-#getPosition = (b >> 4) & 1
-#setBit1 = b | (1 << 4)
-#setBit0 = b & ~(1 << 4)
-#print(f"{setBit0:08b}")
+if len(sys.argv) > 3:
+    password = sys.argv[3]
+    random.seed(password)
 
 
 def getBinaryRGB(pixel):
@@ -55,7 +62,7 @@ def setBits(cover, secret, start : int, end : int):
     return cover
 
 # Assume Image is same size or smaller
-def stego(cover, secret, bits):
+def stego_linear(cover, secret, bits):
     # Cartersian Plane (0,0) is top left
     cover_width, cover_height = cover.size
     secret_width, secret_height = secret.size
@@ -76,7 +83,6 @@ def stego(cover, secret, bits):
                         secret_r, secret_g, secret_b = secret_rgb
                         cover_r, cover_g, cover_b = cover_rgb
 
-
                         cover_r = setBits(cover_r, secret_r, 0, bits)
                         cover_g = setBits(cover_g, secret_g, 0, bits)
                         cover_b = setBits(cover_b, secret_b, 0, bits)
@@ -89,13 +95,50 @@ def stego(cover, secret, bits):
 
                 else:
                     return 0
+                
+def stego_prng(cover, secret, bits):
+    # Cartersian Plane (0,0) is top left
+    cover_width, cover_height = cover.size
+    secret_width, secret_height = secret.size
+
+    # Printer style :)
+    with Progress() as progress:
+        task = progress.add_task("Embedding Image...", total = (secret_height * secret_width))
+
+        for i in range(cover_height):
+            for j in range(cover_width):
+                cover_rgb = cover.getpixel((j, i))
+                
+                if i < secret_height: # only modifying pixels that the stego image covers
+                    if j < secret_width:
+                        secret_rgb = secret.getpixel((j, i))
+
+                        #need to get amount of LSB bits from stego to cover
+                        secret_r, secret_g, secret_b = secret_rgb
+                        cover_r, cover_g, cover_b = cover_rgb
+
+                        cover_r = setBits(cover_r, secret_r, 0, bits)
+                        cover_g = setBits(cover_g, secret_g, 0, bits)
+                        cover_b = setBits(cover_b, secret_b, 0, bits)
+
+                        new_rgb = cover_r, cover_g, cover_b
+
+                        gap_width : int = random.randint(0, cover_width - 1)
+                        gap_height: int = random.randint(0, cover_height - 1)
+
+                        stego_img.putpixel((gap_width,gap_height), new_rgb)
+
+                        progress.update(task, advance = 1)
+
+                else:
+                    return 0
             
 def getBits(pixel, start, end):
     mask = (1 << end) - 1
 
     return (pixel & mask)
 
-def extract(stego, bits):
+def extract_linear(stego, bits):
     stego_width, stego_height = secret_img.size
     extract_img = Image.new("RGB", (stego_width, stego_height), 0)
 
@@ -114,7 +157,7 @@ def extract(stego, bits):
 
 
                 rgb = stego_r, stego_g, stego_b
-                
+
                 extract_img.putpixel((j,i), rgb)
 
                 progress.update(task, advance = 1)
@@ -122,12 +165,45 @@ def extract(stego, bits):
 
     return extract_img
 
-stego(cover_img, secret_img, 1)
-stego_img.save("stego_image.png")
+def extract_prng(cover, stego, bits):
+    cover_width, cover_height = cover.size
+    stego_width, stego_height = secret_img.size
+    extract_img = Image.new("RGB", (stego_width, stego_height), 0)
 
+    with Progress() as progress:
+        task = progress.add_task("Extracting Image...", total = (stego_height * stego_width))
+        
+        for i in range(stego_height):
+            for j in range(stego_width):
+                gap_width : int = random.randint(0, cover_width - 1)
+                gap_height: int = random.randint(0, cover_height - 1)
+
+                pixel = stego.getpixel((gap_width,gap_height))
+
+                r, g, b = pixel
+
+                stego_r = getBits(r, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+                stego_g = getBits(g, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+                stego_b = getBits(b, 0, bits) * int(255 / (pow(2, bits) - 1)) # multiply to scale to 255
+
+
+                rgb = stego_r, stego_g, stego_b
+                
+
+                extract_img.putpixel((j,i), rgb)
+
+                progress.update(task, advance = 1)
+
+
+    return extract_img
+
+"""
+stego_prng(cover_img, secret_img, 1)
+stego_img.save("stego_image.png")
+"""
 stego_img = Image.open("stego_image.png")
 
-extract_img = extract(stego_img, 1)
+extract_img = extract_prng(cover_img, stego_img, 1)
 extract_img.save("secret_image.png")
 
 #print(f"setting: {b:08b} to {a:08b}")
