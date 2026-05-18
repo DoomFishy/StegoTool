@@ -88,8 +88,36 @@ def hideSize(cover, secret):
     width_arr = bitarray(format(secret_width, "08b"))
     height_arr = bitarray(format(secret_height, "08b"))
 
+    random_width = random.randint(0, cover_width - 1)
+    random_height = random.randint(0, cover_height - 1)
     
+    current = 0
 
+    rgb = cover.getpixel((random_width, random_height))
+
+    r, g ,b = rgb
+
+    while (current < len(width_arr)):
+        if (width_arr[current] == 1):
+            r = r | (1 << current) # change to 1
+            #print("added 1 ", i)
+        else:
+            r = r & ~(1 << current) # change to 0
+            #print("added 0 ", i)
+
+        current += 1
+
+    current = 0
+
+    while (current < len(height_arr)):
+        if (height_arr[current] == 1):
+            g = g | (1 << current) # change to 1
+            #print("added 1 ", i)
+        else:
+            g = g & ~(1 << current) # change to 0
+            #print("added 0 ", i)
+
+        current += 1
 
 # Assume Image is same size or smaller
 def stego_linear(cover, secret, bits):
@@ -191,8 +219,9 @@ def stego_prng(cover, secret, bits):
                 else:
                     return 0
             
-hideSize(cover_img,secret_img)
 
 stego_prng(cover_img, secret_img, 1)
+hideSize(cover_img,secret_img)
+
 stego_img.save("stego_image.png")
 

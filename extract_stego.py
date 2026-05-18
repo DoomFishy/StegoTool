@@ -15,6 +15,7 @@ import os, sys, time, random
 
 from PIL import Image, ImageFilter
 from rich.progress import Progress, track
+from bitarray import bitarray
 
 cover_img = Image.open(sys.argv[1])
 secret_img = Image.open(sys.argv[2])    
@@ -52,6 +53,22 @@ def extractBits(pixel, bits):
 
     rgb = stego_r, stego_g, stego_b
     return rgb
+
+def findSize(cover, secret):
+    # uses 4 bytes or 32 bits
+    # uses R and G for now 
+    cover_width, cover_height = cover.size
+
+    random_width = random.randint(0, cover_width - 1)
+    random_height = random.randint(0, cover_height - 1)
+    
+    current = 0
+
+    rgb = cover.getpixel((random_width, random_height))
+
+    r, g ,b = rgb
+
+    bits = getBits(r, 1)
 
 def extract_linear(cover, stego, bits):
     stego_width, stego_height = secret_img.size
