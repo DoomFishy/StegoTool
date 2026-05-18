@@ -15,6 +15,7 @@ import os, sys, time, random
 
 from PIL import Image, ImageFilter
 from rich.progress import Progress, track
+from bitarray import bitarray
 
 cover_img = Image.open(sys.argv[1])
 secret_img = Image.open(sys.argv[2])    
@@ -52,7 +53,7 @@ def getBinaryRGB(pixel):
 def setBits(cover, secret, start : int, end : int):
 
     for i in range(start, end):
-        bit_secret = (secret >> i) & 1
+        bit_secret = (secret >> i) & 1 # get bit from position i
 
         if (bit_secret == 1):
             cover = cover | (1 << i) # change to 1
@@ -60,9 +61,6 @@ def setBits(cover, secret, start : int, end : int):
         else:
             cover = cover & ~(1 << i) # change to 0
             #print("added 0 ", i)
-
-    
-    #print(bin(cover))
 
     return cover
 
@@ -78,6 +76,20 @@ def swapBits(cover_rgb, secret_rgb, bits):
 
     #print("----------------")
     return new_rgb
+
+# build bits from back to front
+# 
+def hideSize(cover, secret):
+    # uses 4 bytes or 32 bits
+    # uses R and G for now 
+    cover_width, cover_height = cover.size
+    secret_width, secret_height = secret.size
+
+    width_arr = bitarray(format(secret_width, "08b"))
+    height_arr = bitarray(format(secret_height, "08b"))
+
+    
+
 
 # Assume Image is same size or smaller
 def stego_linear(cover, secret, bits):
@@ -179,6 +191,7 @@ def stego_prng(cover, secret, bits):
                 else:
                     return 0
             
+hideSize(cover_img,secret_img)
 
 stego_prng(cover_img, secret_img, 1)
 stego_img.save("stego_image.png")
